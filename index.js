@@ -15,7 +15,7 @@ app.get('/', (req, res) => {
   res.send('Hello World!')
 })
 
-const uri =process.env.MONGO_DB_URL;
+const uri = process.env.MONGO_DB_URL;
 console.log(process.env.MONGO_DB_URL);
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -32,35 +32,69 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-      const database = client.db("hireLoop");
+    const database = client.db("hireLoop");
     const jobCollection = database.collection("jobs");
-    const companyCollection =database.collection("companies");
+    const companyCollection = database.collection("companies");
+    const usersCollection = database.collection("user");
 
-    app.get("/api/jobs", async (req,res)=>{
-      const query = {};
-      if(req.query.companyID){
-        query.companyID =req.query.companyID
-      }
-      if(req.query.status){
-        query.status =req.query.status
-      }
-      const cursor =jobCollection.find(query);
+    app.get("/api/users", async (req, res) => {
+      const cursor = usersCollection.find().skip(6);
       const result = await cursor.toArray();
       res.send(result);
-    })  
-     
-    app.post('/api/jobs',async (req,res) => {
-         const job = req.body;
-         const result = await jobCollection.insertOne(job)
-         res.send(result)
     })
 
-       //company related apis
-       app.post("/api/companies",async (req, res) => {
-        const company =req.body;
-        const result = await companyCollection.insertOne(company);
-        res.send(result);
-       })
+    app.get("/api/jobs", async (req, res) => {
+      const query = {};
+      if (req.query.companyId) {
+        query.companyId = req.query.companyId
+      }
+      if (req.query.status) {
+        query.status = req.query.status
+      }
+      const cursor = jobCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    })
+
+    app.post('/api/jobs', async (req, res) => {
+      const job = req.body;
+      const newJob = {
+        ...job,
+        createdAt: new Date()
+      }
+      const result = await jobCollection.insertOne(newJob)
+      res.send(result)
+    })
+
+    //company related apis
+    app.get("/api/companies",async (req, res) =>{
+      const cursor= companyCollection.find().skip(7);
+      const result= await cursor.toArray();
+      console.log('company collection', result);
+      res.send(result);
+    }) 
+
+    app.get("/api/my/companies", async (req, res) => {
+      const query = {};
+      if (req.query.recruiterId) {
+        query.recruiterId = req.query.recruiterId;
+      }
+      const result = await companyCollection.findOne(query);
+      console.log("my companies :", result);
+      res.send(result || {});
+    })
+
+
+    app.post("/api/my/companies", async (req, res) => {
+      const companyData = req.body;
+      const newCompany = {
+        ...companyData,
+        createdAt: new Date()
+      };
+      const result = await companyCollection.insertOne(newCompany);
+
+      res.send(result);
+    });
 
 
 
@@ -73,8 +107,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
-
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
